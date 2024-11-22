@@ -21,7 +21,7 @@ import sqlite3 as sql
 from phone import FirstNumber, Staples, Dash, PhoneError, CountOfNumbers, CountryCode, IsNumbers, Operator
 from send_email import WrongFile, WrongEmail, LoginError, SendError, SMTPServerError
 
-DB_NAME = 'users_db.sqlite'
+DB_NAME = 'db/users_db.sqlite'
 
 
 class WrongDate(Exception):
@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
 
     def save_user_data(self):
         try:
+            print(load_users_from_db())
             surname = self.surname.text()
             name = self.name.text()
             patronymic = self.patronymic.text()
@@ -99,8 +100,10 @@ class MainWindow(QMainWindow):
             if all([surname, name, patronymic, date]) and any([phone, email]):
                 if phone:
                     phone = PhoneNumber(phone).formater()
+                    save_user_to_db(f'{surname} {name} {patronymic}', date, phone=phone)
                 elif email:
                     email = SendMessage(email).formater()
+                    save_user_to_db(f'{surname} {name} {patronymic}', date, email=email)
             else:
                 error_message_box(self, 'Заполнены не все обязательные поля!')
         except WrongDate as wd:
@@ -128,11 +131,26 @@ class MainWindow(QMainWindow):
 
 
 def load_users_from_db():
-    users = []
     with sql.connect(DB_NAME) as con:
         users = con.cursor().execute(
-            ''''''
+            '''SELECT * FROM users'''
         )
+    return users
+
+
+def save_user_to_db(name, date, email='', phone=''):
+    with sql.connect(DB_NAME) as con:
+        if email:
+            con.cursor().execute(
+                'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
+                (name, date, email, '', '')
+            )
+        elif phone:
+            con.cursor().execute(
+                'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
+                (name, date, '', phone, '')
+            )
+        con.commit()
 
 
 def except_hook(cls, exception, traceback):
@@ -152,3 +170,4 @@ if __name__ == '__main__':
 # date
 # email
 # phone
+# error

@@ -71,7 +71,7 @@ class SendMessage:
 
     def formater(self) -> bool:
         ''' Проверяет почту на правильность написания '''
-        email = self.recipient
+        email = str(self.recipient)
         if email.count('@') == 1 and email.count('.') == 1 and email.index('@') < email.index('.'):
             return email
         raise WrongEmail('Введен неверный адрес почты!')
