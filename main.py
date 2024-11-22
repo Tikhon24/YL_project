@@ -19,6 +19,15 @@ import sqlite3 as sql
 
 # Errors
 from phone import FirstNumber, Staples, Dash, PhoneError, CountOfNumbers, CountryCode, IsNumbers, Operator
+from send_email import WrongFile, WrongEmail, LoginError, SendError, SMTPServerError
+
+
+class WrongDate(Exception):
+    pass
+
+
+def error_message_box(object, er):
+    QMessageBox.critical(object, 'Error', er)
 
 
 class MainWindow(QMainWindow):
@@ -51,9 +60,6 @@ class MainWindow(QMainWindow):
         # кнопки
         self.save_settings_btn.clicked.connect(self.save_settings)
 
-    def error_message_box(self, er):
-        QMessageBox.critical(self, 'Error', er)
-
     def is_filled(self, obj):
         if obj.text():
             return True
@@ -77,49 +83,58 @@ class MainWindow(QMainWindow):
             with open('static/reception_began.txt', 'w', encoding='utf8') as file:
                 file.write(reception_began)
         else:
-            self.error_message_box('Заполнены не все обязательные поля!')
+            error_message_box(self, 'Заполнены не все обязательные поля!')
 
     def save_user_data(self):
-        surname = self.surname.text()
-        name = self.name.text()
-        patronymic = self.patronymic.text()
-        email = self.mail.text()
-        phone = self.phone.text()
-        date = self.date.dateTime().toString()
-        print(date)
-        if all([surname, name, patronymic, date]) and any([phone, email]):
-            if phone:
-                phone = PhoneNumber(phone).formater()
-            elif email:
-                email = SendMessage(email).formater()
-        else:
-            self.error_message_box('Заполнены не все обязательные поля!')
+        try:
+            surname = self.surname.text()
+            name = self.name.text()
+            patronymic = self.patronymic.text()
+            email = self.mail.text()
+            phone = self.phone.text()
+            date = self.date.dateTime().toString()
+            print(date)
+            if all([surname, name, patronymic, date]) and any([phone, email]):
+                if phone:
+                    phone = PhoneNumber(phone).formater()
+                elif email:
+                    email = SendMessage(email).formater()
+            else:
+                error_message_box(self, 'Заполнены не все обязательные поля!')
+        except WrongDate as wd:
+            error_message_box(self, str(wd))
+        except WrongEmail as we:
+            error_message_box(self, str(we))
+        except IsNumbers as i_n:
+            error_message_box(self, str(i_n))
+        except FirstNumber as fn:
+            error_message_box(self, str(fn))
+        except Staples as s:
+            error_message_box(self, str(s))
+        except Dash as d:
+            error_message_box(self, str(d))
+        except CountOfNumbers as con:
+            error_message_box(self, str(con))
+        except Operator as op:
+            error_message_box(self, str(op))
+        except PhoneError as pe:
+            error_message_box(self, str(pe))
+        except CountryCode as cc:
+            error_message_box(self, str(cc))
+        except Exception as ex:
+            print('Произошла ошибка:', ex)
+
+
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
 
 
 if __name__ == '__main__':
-    try:
-        app = QApplication(sys.argv)
-        ex = MainWindow()
-        ex.show()
-        sys.exit(app.exec())
-    except IsNumbers as i_n:
-        print(i_n)
-    except FirstNumber as fn:
-        print(fn)
-    except Staples as s:
-        print(s)
-    except Dash as d:
-        print(d)
-    except CountOfNumbers as con:
-        print(con)
-    except Operator as op:
-        print(op)
-    except PhoneError as pe:
-        print(pe)
-    except CountryCode as cc:
-        print(cc)
-    except Exception as ex:
-        print('Произошла ошибка:', ex)
+    app = QApplication(sys.argv)
+    ex = MainWindow()
+    ex.show()
+    sys.excepthook = except_hook
+    sys.exit(app.exec())
 
 # БД
 # id
