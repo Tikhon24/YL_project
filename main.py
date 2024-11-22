@@ -21,6 +21,8 @@ import sqlite3 as sql
 from phone import FirstNumber, Staples, Dash, PhoneError, CountOfNumbers, CountryCode, IsNumbers, Operator
 from send_email import WrongFile, WrongEmail, LoginError, SendError, SMTPServerError
 
+DB_NAME = 'users_db.sqlite'
+
 
 class WrongDate(Exception):
     pass
@@ -123,6 +125,14 @@ class MainWindow(QMainWindow):
             error_message_box(self, str(cc))
         except Exception as ex:
             print('Произошла ошибка:', ex)
+
+
+def load_users_from_db():
+    users = []
+    with sql.connect(DB_NAME) as con:
+        users = con.cursor().execute(
+            ''''''
+        )
 
 
 def except_hook(cls, exception, traceback):
