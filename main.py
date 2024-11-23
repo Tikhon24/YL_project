@@ -1,12 +1,13 @@
 # дата, почта, телефон
-# нужно собирать приемы с прошедшими сроками или те, у которых срок не неделя а меньше
-# отправить заменить на "добавить на отправку"
+# нужно собирать приемы со сроками <= неделя
 import datetime
 
 import sys
+import time
 
 from PyQt6 import uic
 from PyQt6.QtCore import Qt
+from PyQt6 import QtGui
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QWidget, QApplication, QLabel, QMainWindow, QMessageBox, QLineEdit
 
@@ -28,8 +29,8 @@ class WrongDate(Exception):
     pass
 
 
-def error_message_box(object, er):
-    QMessageBox.critical(object, 'Error', er)
+def error_message_box(obj, er):
+    QMessageBox.critical(obj, 'Error', er)
 
 
 class MainWindow(QMainWindow):
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow):
 
     def loadUI(self):
         # загрузка дизайна главного окна
+        self.setWindowIcon(QtGui.QIcon('static/favicon.png'))
         self.send_btn.clicked.connect(self.save_user_data)
 
     def loadSettings(self):
@@ -130,6 +132,44 @@ class MainWindow(QMainWindow):
             print('Произошла ошибка:', ex)
 
 
+def update_error(id, er) -> None:
+    # обновляет поле error в бд
+    with sql.connect(DB_NAME) as con:
+        con.cursor().execute(
+            '''UPDATE users
+            SET error = ?
+            WHERE id = ?''',
+            (er, id)
+        )
+        con.commit()
+
+
+def send_mail_to_user(id: int, date, email='', phone=''):
+    flag = True
+    for _ in range(3):
+        if flag:
+            time.sleep(1)
+            try:
+                if phone:
+                    pass
+                if email:
+                    message = SendMessage(email)
+                    message.send_email(date, 'static/notification.txt')
+                    update_error(id, 'True')
+                    flag = False
+                    print('Email successfully sent!')
+            except WrongFile as wf:
+                update_error(id, str(wf))
+            except LoginError as le:
+                update_error(id, str(le))
+            except SendError as se:
+                update_error(id, str(se))
+            except SMTPServerError as smtpe:
+                update_error(id, str(smtpe))
+            except Exception as ex:
+                update_error(id, str(ex))
+
+
 def load_users_from_db():
     with sql.connect(DB_NAME) as con:
         users = con.cursor().execute(
@@ -143,14 +183,30 @@ def save_user_to_db(name, date, email='', phone=''):
         if email:
             con.cursor().execute(
                 'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
-                (name, date, email, '', '')
+                (name, date, email, '', 'False')
             )
         elif phone:
             con.cursor().execute(
                 'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
-                (name, date, '', phone, '')
+                (name, date, '', phone, 'False')
             )
         con.commit()
+
+
+def find_and_move_users_to_sending():
+    # все юзеры
+    users = load_users_from_db()
+    # не отправленные
+    my_users = []
+    for user in users:
+        id, name, date, email, phone, error = user
+        if error != 'True':
+            my_users.append(user)
+    # работа с неотправленными юзерами
+    for user in my_users:
+        id, name, date, email, phone, error = user
+        if True: # сделать условие со временем
+            send_mail_to_user(id, date, email, phone)
 
 
 def except_hook(cls, exception, traceback):
@@ -158,6 +214,7 @@ def except_hook(cls, exception, traceback):
 
 
 if __name__ == '__main__':
+    find_and_move_users_to_sending()
     app = QApplication(sys.argv)
     ex = MainWindow()
     ex.show()
