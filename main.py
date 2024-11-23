@@ -205,7 +205,7 @@ def find_and_move_users_to_sending():
     # работа с неотправленными юзерами
     for user in my_users:
         id, name, date, email, phone, error = user
-        if True: # сделать условие со временем
+        if True:  # сделать условие со временем
             send_mail_to_user(id, date, email, phone)
 
 
