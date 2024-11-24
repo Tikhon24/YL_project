@@ -1,15 +1,15 @@
 # дата, почта, телефон
 # нужно собирать приемы со сроками <= неделя
-import datetime
 
 import sys
 import time
 
-from PyQt6 import uic
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QDateTime
 from PyQt6 import QtGui
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QWidget, QApplication, QLabel, QMainWindow, QMessageBox, QLineEdit
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+
+# дизайн
+from static.design import Ui_MainWindow
 
 # проверка номеров телефонов
 from phone import PhoneNumber
@@ -33,10 +33,11 @@ def error_message_box(obj, er):
     QMessageBox.critical(obj, 'Error', er)
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi('main_window.ui', self)
+        self.setupUi(self)
+        self.retranslateUi(self)
         self.loadSettings()
         self.loadUI()
 
@@ -63,6 +64,19 @@ class MainWindow(QMainWindow):
         self.set_reception_began.setText(reception_began)
         # кнопки
         self.save_settings_btn.clicked.connect(self.save_settings)
+
+    def message_box(self, s):
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle('Сообщение')
+        dlg.setText(s)
+        button = dlg.exec()
+        if button == QMessageBox.StandardButton.Ok:
+            self.surname.setText('')
+            self.name.setText('')
+            self.patronymic.setText('')
+            self.mail.setText('')
+            self.phone.setText('')
+            self.date.setDateTime(QDateTime(2000, 1, 1, 0, 0, 0))
 
     def is_filled(self, obj):
         if obj.text():
@@ -91,14 +105,12 @@ class MainWindow(QMainWindow):
 
     def save_user_data(self):
         try:
-            print(load_users_from_db())
             surname = self.surname.text()
             name = self.name.text()
             patronymic = self.patronymic.text()
             email = self.mail.text()
             phone = self.phone.text()
             date = self.date.dateTime().toString()
-            print(date)
             if all([surname, name, patronymic, date]) and any([phone, email]):
                 if phone:
                     phone = PhoneNumber(phone).formater()
@@ -106,6 +118,7 @@ class MainWindow(QMainWindow):
                 elif email:
                     email = SendMessage(email).formater()
                     save_user_to_db(f'{surname} {name} {patronymic}', date, email=email)
+                self.message_box('Данные успешно сохранены!')
             else:
                 error_message_box(self, 'Заполнены не все обязательные поля!')
         except WrongDate as wd:
@@ -144,20 +157,30 @@ def update_error(id, er) -> None:
         con.commit()
 
 
+def delete_user(id):
+    with sql.connect(DB_NAME) as con:
+        con.cursor().execute(
+            '''DELETE FROM users
+            WHERE id = ?''',
+            (id,)
+        )
+        con.commit()
+
+
 def send_mail_to_user(id: int, date, email='', phone=''):
     flag = True
     for _ in range(3):
         if flag:
-            time.sleep(1)
+            time.sleep(0.5)
             try:
                 if phone:
                     pass
                 if email:
                     message = SendMessage(email)
                     message.send_email(date, 'static/notification.txt')
-                    update_error(id, 'True')
-                    flag = False
-                    print('Email successfully sent!')
+                print('Email successfully sent!')
+                update_error(id, 'True')
+                flag = False
             except WrongFile as wf:
                 update_error(id, str(wf))
             except LoginError as le:
