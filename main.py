@@ -65,7 +65,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # кнопки
         self.save_settings_btn.clicked.connect(self.save_settings)
 
-    def message_box(self, s):
+    def user_saved_message_box(self, s):
         dlg = QMessageBox(self)
         dlg.setWindowTitle('Сообщение')
         dlg.setText(s)
@@ -84,6 +84,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return False
 
     def save_settings(self):
+        # сохранение настроек
         if all([self.is_filled(self.set_email), self.is_filled(self.set_password), self.is_filled(self.set_topic),
                 self.is_filled(self.set_notification), self.is_filled(self.set_reception_began)]):
             email = self.set_email.text()
@@ -104,6 +105,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             error_message_box(self, 'Заполнены не все обязательные поля!')
 
     def save_user_data(self):
+        # сохранение данных пользователя в бд
         try:
             surname = self.surname.text()
             name = self.name.text()
@@ -118,7 +120,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 elif email:
                     email = SendMessage(email).formater()
                     save_user_to_db(f'{surname} {name} {patronymic}', date, email=email)
-                self.message_box('Данные успешно сохранены!')
+                self.user_saved_message_box('Данные успешно сохранены!')
             else:
                 error_message_box(self, 'Заполнены не все обязательные поля!')
         except WrongDate as wd:
