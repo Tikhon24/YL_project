@@ -127,28 +127,3 @@ class PhoneNumber(CheckPhone):
             if self.count_numbers(phone_number, code) and self.right_operator(phone_number, code):
                 return phone_number
         raise PhoneError(ERROR_FORMAT)
-
-
-def main():
-    number = input()
-    phone = PhoneNumber(number.strip())
-    try:
-        print(phone.formater())
-    except IsNumbers as i_n:
-        print(i_n)
-    except FirstNumber as fn:
-        print(fn)
-    except Staples as s:
-        print(s)
-    except Dash as d:
-        print(d)
-    except CountOfNumbers as con:
-        print(con)
-    except Operator as op:
-        print(op)
-    except PhoneError as pe:
-        print(pe)
-    except CountryCode as cc:
-        print(cc)
-    except Exception as ex:
-        print('Произошла ошибка:', ex)

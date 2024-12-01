@@ -1,12 +1,13 @@
-# дата, почта, телефон
-# нужно собирать приемы со сроками <= неделя
-
 import sys
 import time
+from datetime import datetime, timedelta
 
+from PyQt6 import uic
 from PyQt6.QtCore import QDateTime
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidgetItem, QHeaderView, QWidget, QPushButton
+from PyQt6.QtCore import QThread, pyqtSignal
 
 # дизайн
 from static.design import Ui_MainWindow
@@ -33,18 +34,111 @@ def error_message_box(obj, er):
     QMessageBox.critical(obj, 'Error', er)
 
 
-class MainWindow(QMainWindow, Ui_MainWindow):
+class DataBaseChecker(QThread):
+    db_data = pyqtSignal(list)
+
+    def run(self):
+        while True:
+            users_data = load_users_from_db()
+            self.db_data.emit(users_data)
+            time.sleep(10)
+
+
+class UsersTable(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QtGui.QIcon('static/favicon.png'))
+        uic.loadUi('users_table.ui', self)
+        self.table_flag = True
+
+    def loadTable(self):
+        self.table_flag = True
+        self.users_table.setRowCount(0)
+        self.users_table.setColumnCount(0)
+        self.update()
+
+    def paintEvent(self, event):
+        if self.table_flag:
+            self.table_flag = False
+            users = load_users_from_db()
+            if users:
+                self.users_table.setRowCount(0)
+                index_id = {}
+                ids = [user[0] for user in users]
+                self.users_table.setColumnCount(6)
+                self.users_table.setHorizontalHeaderLabels(
+                    ['Удаление', 'Имя', 'Дата', 'Почта', 'Телефон', 'Статус отправки'])
+                for i, row in enumerate(users):
+                    index_id[i + 1] = ids[i]
+                    self.users_table.setRowCount(
+                        self.users_table.rowCount() + 1)
+                    for j, elem in enumerate(row):
+                        match j:
+                            case 0:
+                                user_index = index_id[i + 1]
+                                button = QPushButton('Удалить')
+                                # Используем функцию-обертку для передачи user_index
+                                button.clicked.connect(self.create_delete_handler(user_index))
+                                self.users_table.setCellWidget(i, j, button)
+                                continue
+                            case 2:
+                                elem = datetime.strptime(elem, '%Y-%m-%d %H:%M:%S')
+                                elem = elem.strftime("%H:%M %d.%m.%Y")
+                            case 5:
+                                if elem == 'True':
+                                    elem = 'Отправлено'
+                                elif elem == 'False':
+                                    elem = 'Не отправлено'
+                        if elem == '':
+                            elem = 'Не указано'
+                        self.users_table.setItem(i, j, QTableWidgetItem(elem))
+            self.users_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+    def create_delete_handler(self, user_index):
+        # Возвращаем лямбда-функцию, которая вызывает delete_user с правильным user_index
+        return lambda checked: self.delete_user(user_index)
+
+    def delete_user(self, id: int):
+        delete_user(id)
+        self.loadTable()
+
+
+class MainWindow(QMainWindow, Ui_MainWindow):
+    # основное окно приложения
+    def __init__(self):
+        super().__init__()
+        # загрузка интерфейса
         self.setupUi(self)
         self.retranslateUi(self)
+        uic.loadUi('main_window.ui', self)
         self.loadSettings()
         self.loadUI()
+
+        self.table = UsersTable()
+
+    def start_checking(self):
+        # запускает второй поток
+        self.db_checker = DataBaseChecker()
+        self.db_checker.db_data.connect(self.update_all)
+        self.db_checker.start()
+
+    def update_all(self, users_data):
+        # обновляет все данные связанные с бд
+        find_and_move_users_to_sending(users_data)
+        self.update_table()
+
+    def update_table(self):
+        self.table.loadTable()
 
     def loadUI(self):
         # загрузка дизайна главного окна
         self.setWindowIcon(QtGui.QIcon('static/favicon.png'))
         self.send_btn.clicked.connect(self.save_user_data)
+        self.table_btn.clicked.connect(self.loadTable)
+        self.pixmap = QPixmap('static/pic_write.png')
+        self.picture.setPixmap(self.pixmap)
+        # запуск асинхронного потока
+        self.start_checking()
 
     def loadSettings(self):
         # загрузка значений в окно настроек
@@ -64,6 +158,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_reception_began.setText(reception_began)
         # кнопки
         self.save_settings_btn.clicked.connect(self.save_settings)
+
+    def loadTable(self):
+        self.table.loadTable()
+        self.table.show()
 
     def user_saved_message_box(self, s):
         dlg = QMessageBox(self)
@@ -112,15 +210,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             patronymic = self.patronymic.text()
             email = self.mail.text()
             phone = self.phone.text()
-            date = self.date.dateTime().toString()
-            if all([surname, name, patronymic, date]) and any([phone, email]):
+            date = self.date.dateTime().toPyDateTime()
+            if all([surname, name, date]) and any([phone, email]):
                 if phone:
                     phone = PhoneNumber(phone).formater()
-                    save_user_to_db(f'{surname} {name} {patronymic}', date, phone=phone)
-                elif email:
+                if email:
                     email = SendMessage(email).formater()
-                    save_user_to_db(f'{surname} {name} {patronymic}', date, email=email)
+                save_user_to_db(f'{surname} {name} {patronymic}', date, email=email, phone=phone)
                 self.user_saved_message_box('Данные успешно сохранены!')
+                try:
+                    self.table.loadTable()
+                except Exception:
+                    pass
             else:
                 error_message_box(self, 'Заполнены не все обязательные поля!')
         except WrongDate as wd:
@@ -159,7 +260,8 @@ def update_error(id, er) -> None:
         con.commit()
 
 
-def delete_user(id):
+def delete_user(id: int):
+    # удаление юзера из бд
     with sql.connect(DB_NAME) as con:
         con.cursor().execute(
             '''DELETE FROM users
@@ -169,7 +271,8 @@ def delete_user(id):
         con.commit()
 
 
-def send_mail_to_user(id: int, date, email='', phone=''):
+def send_mail_to_user(id: int, date, email='', phone='', is_began=False):
+    # отправка сообщения
     flag = True
     for _ in range(3):
         if flag:
@@ -179,8 +282,11 @@ def send_mail_to_user(id: int, date, email='', phone=''):
                     pass
                 if email:
                     message = SendMessage(email)
-                    message.send_email(date, 'static/notification.txt')
-                print('Email successfully sent!')
+                    date = date.strftime("%H:%M %d.%m.%Y")
+                    if is_began:
+                        message.send_email(date, 'static/reception_began.txt')
+                    else:
+                        message.send_email(date, 'static/notification.txt')
                 update_error(id, 'True')
                 flag = False
             except WrongFile as wf:
@@ -195,15 +301,18 @@ def send_mail_to_user(id: int, date, email='', phone=''):
                 update_error(id, str(ex))
 
 
-def load_users_from_db():
+# РАБОТА С БД
+def load_users_from_db() -> list[tuple]:
+    # возвращает все записи из бд
     with sql.connect(DB_NAME) as con:
         users = con.cursor().execute(
             '''SELECT * FROM users'''
         )
-    return users
+    return list(users)
 
 
 def save_user_to_db(name, date, email='', phone=''):
+    # добавляет юзера в бд
     with sql.connect(DB_NAME) as con:
         if email:
             con.cursor().execute(
@@ -218,9 +327,10 @@ def save_user_to_db(name, date, email='', phone=''):
         con.commit()
 
 
-def find_and_move_users_to_sending():
+def find_and_move_users_to_sending(users=''):
     # все юзеры
-    users = load_users_from_db()
+    if users == '':
+        users = load_users_from_db()
     # не отправленные
     my_users = []
     for user in users:
@@ -228,9 +338,14 @@ def find_and_move_users_to_sending():
         if error != 'True':
             my_users.append(user)
     # работа с неотправленными юзерами
+    now = datetime.now()
+    one_week_later = now + timedelta(weeks=1)
     for user in my_users:
         id, name, date, email, phone, error = user
-        if True:  # сделать условие со временем
+        date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        if date <= now:  # сделать условие со временем
+            send_mail_to_user(id, date, email, phone, is_began=True)
+        elif date <= one_week_later:
             send_mail_to_user(id, date, email, phone)
 
 
@@ -245,11 +360,3 @@ if __name__ == '__main__':
     ex.show()
     sys.excepthook = except_hook
     sys.exit(app.exec())
-
-# БД
-# id
-# name
-# date
-# email
-# phone
-# error

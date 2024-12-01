@@ -48,8 +48,10 @@ class SendMessage:
                 template = template.format(file.read())
         except BaseException:
             raise WrongFile('Выбран неверный файл')
-
-        template = template.format(date)
+        try:
+            template = template.format(date)
+        except Exception:
+            pass
 
         # формирование письма
         msg = MIMEText(template, "html")
