@@ -317,7 +317,12 @@ def load_users_from_db() -> list[tuple]:
 def save_user_to_db(name, date, email='', phone=''):
     # добавляет юзера в бд
     with sql.connect(DB_NAME) as con:
-        if email:
+        if email and phone:
+            con.cursor().execute(
+                'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
+                (name, date, email, phone, 'False')
+            )
+        elif email:
             con.cursor().execute(
                 'INSERT INTO users(name, date, email, phone, error) VALUES (?, ?, ?, ?, ?)',
                 (name, date, email, '', 'False')
