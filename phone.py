@@ -1,5 +1,5 @@
-ERROR_FORMAT = 'неверный формат'
-ERROR_COUNT = 'неверное количество цифр'
+ERROR_FORMAT = 'Неверный формат'
+ERROR_COUNT = 'Неверное количество цифр'
 
 
 class FirstNumber(Exception):
@@ -88,7 +88,7 @@ class CheckPhone:
                     list(range(910, 920)) + list(range(980, 990)) + list(range(920, 940)) +
                     list(range(902, 907)) + list(range(960, 970))):
                 return True
-            raise Operator('не определяется оператор сотовой связи')
+            raise Operator('Не определяется оператор сотовой связи!')
         else:
             return True
 
@@ -123,7 +123,7 @@ class PhoneNumber(CheckPhone):
             elif phone_number[:2] == '+1':
                 code = '+1'
             else:
-                raise CountryCode('не определяется код страны')
+                raise CountryCode('Не определяется код страны')
             if self.count_numbers(phone_number, code) and self.right_operator(phone_number, code):
                 return phone_number
         raise PhoneError(ERROR_FORMAT)

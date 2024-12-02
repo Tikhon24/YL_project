@@ -10,7 +10,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidget
 from PyQt6.QtCore import QThread, pyqtSignal
 
 # дизайн
-from static.design import Ui_MainWindow
+from design.main_window_design import Ui_MainWindow
+from design.users_table_design import Ui_UsersTable
 
 # проверка номеров телефонов
 from phone import PhoneNumber
@@ -44,11 +45,14 @@ class DataBaseChecker(QThread):
             time.sleep(10)
 
 
-class UsersTable(QWidget):
+class UsersTable(QWidget, Ui_UsersTable):
     def __init__(self):
         super().__init__()
+        # загрузка интерфейса
+        self.setupUi(self)
+        self.retranslateUi(self)
         self.setWindowIcon(QtGui.QIcon('static/favicon.png'))
-        uic.loadUi('users_table.ui', self)
+
         self.table_flag = True
 
     def loadTable(self):
@@ -110,7 +114,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # загрузка интерфейса
         self.setupUi(self)
         self.retranslateUi(self)
-        uic.loadUi('main_window.ui', self)
         self.loadSettings()
         self.loadUI()
 
@@ -248,6 +251,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             print('Произошла ошибка:', ex)
 
 
+# РАБОТА С БД
 def update_error(id, er) -> None:
     # обновляет поле error в бд
     with sql.connect(DB_NAME) as con:
@@ -301,7 +305,6 @@ def send_mail_to_user(id: int, date, email='', phone='', is_began=False):
                 update_error(id, str(ex))
 
 
-# РАБОТА С БД
 def load_users_from_db() -> list[tuple]:
     # возвращает все записи из бд
     with sql.connect(DB_NAME) as con:
