@@ -208,9 +208,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def save_user_data(self):
         # сохранение данных пользователя в бд
         try:
-            surname = self.surname.text()
-            name = self.name.text()
-            patronymic = self.patronymic.text()
+            surname = self.surname.text().strip()
+            name = self.name.text().strip()
+            patronymic = self.patronymic.text().strip()
             email = self.mail.text()
             phone = self.phone.text()
             date = self.date.dateTime().toPyDateTime()
