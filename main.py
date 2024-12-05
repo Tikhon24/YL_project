@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 
 from PyQt6 import uic
-from PyQt6.QtCore import QDateTime
+from PyQt6.QtCore import QDateTime, Qt
 from PyQt6 import QtGui
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidgetItem, QHeaderView, QWidget, QPushButton
@@ -249,6 +249,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             error_message_box(self, str(cc))
         except Exception as ex:
             print('Произошла ошибка:', ex)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            self.save_user_data()
 
 
 # РАБОТА С БД
