@@ -125,5 +125,5 @@ class PhoneNumber(CheckPhone):
             else:
                 raise CountryCode('Не определяется код страны')
             if self.count_numbers(phone_number, code) and self.right_operator(phone_number, code):
-                return phone_number
+                return str(phone_number)
         raise PhoneError(ERROR_FORMAT)

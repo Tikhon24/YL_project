@@ -88,6 +88,8 @@ class UsersTable(QWidget, Ui_UsersTable):
                             case 2:
                                 elem = datetime.strptime(elem, '%Y-%m-%d %H:%M:%S')
                                 elem = elem.strftime("%H:%M %d.%m.%Y")
+                            case 4:
+                                elem = str(elem)
                             case 5:
                                 if elem == 'True':
                                     elem = 'Отправлено'
